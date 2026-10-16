@@ -5,6 +5,15 @@ program per platform: no Node, Bun or Python needed.
 
 Latest release: <https://github.com/teminali/lens-releases/releases/latest>
 
+## Install
+
+```
+curl -fsSL https://raw.githubusercontent.com/teminali/lens-releases/main/install.sh | sh
+```
+
+It verifies the signature and checksum, then puts `lens` in `~/.local/bin`. Run it again to update. It needs `curl`, `openssl`,
+`tar`, `shasum` and `python3` (or `jq`).
+
 ## For installers (Deterministic Coder reads this)
 
 `latest.json` in the latest release lists the version and, per platform, the file, its download url, size and sha256.
