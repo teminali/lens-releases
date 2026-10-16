@@ -27,7 +27,7 @@ openssl pkeyutl -verify -pubin -inkey release-public-key.pem -rawin -in latest.j
 
 Then check the sha256 of the downloaded archive against `latest.json` (and `SHA256SUMS.txt`). Reject anything that does not match.
 
-Platforms: `darwin-arm64` (macOS, Apple silicon) in 0.1.0. Others are added as they are built and tried.
+Platforms: `darwin-arm64` (macOS, Apple silicon). Others are added as they are built and tried.
 
 ## License
 
