@@ -12,7 +12,7 @@ curl -fsSL https://raw.githubusercontent.com/teminali/lens-releases/main/install
 ```
 
 It verifies the signature and checksum, then puts `lens` in `~/.local/bin`. Run it again to update. It needs `curl`, `openssl`,
-`tar`, `shasum` and `python3` (or `jq`).
+`tar` and `shasum`, and `python3` or `jq` to read one file. The program itself needs none of them.
 
 ## For installers (Deterministic Coder reads this)
 
