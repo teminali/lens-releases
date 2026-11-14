@@ -35,7 +35,8 @@ jobs:
       V: ${{ inputs.version }}
     steps:
       - name: Check the version
-        run: case "$V" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like 1.2.3, got: $V"; exit 1;; esac
+        run: |
+          case "$V" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like 1.2.3, got $V"; exit 1;; esac
 
       - uses: actions/checkout@v4
         with:
