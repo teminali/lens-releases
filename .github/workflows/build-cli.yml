@@ -1,0 +1,83 @@
+# Builds the Lens CLI release archives on GitHub's Apple silicon runner and keeps them as a DRAFT release of THIS public
+# repository. The source lives in the PRIVATE repository teminali/lens; this workflow reads it with a read-only deploy key
+# (secret CLI_SOURCE_DEPLOY_KEY). It does NOT sign: latest.json.sig is made on the owner's computer, where the signing key
+# stays, after the archives here are downloaded and checked against latest.json. It never publishes the draft.
+#
+# Run it:  gh workflow run build-cli.yml --repo teminali/lens-releases -f ref=<commit or tag in teminali/lens> -f version=0.1.40
+#
+# Safety: workflow_dispatch only (no pull_request or push trigger, so a fork can never start it or reach the secret).
+name: build-cli
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'The commit or tag of teminali/lens to build'
+        required: true
+        type: string
+      version:
+        description: 'The version packages/opencode/package.json must carry, for example 0.1.40'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-cli-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - name: Check the version
+        run: case "$V" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like 1.2.3, got: $V"; exit 1;; esac
+
+      - uses: actions/checkout@v4
+        with:
+          repository: teminali/lens
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ secrets.CLI_SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          path: src
+
+      - name: The source carries this version
+        run: |
+          GOT="$(node -p "require('./src/packages/opencode/package.json').version")"
+          [ "$GOT" = "$V" ] || { echo "package.json says $GOT, asked for $V"; exit 1; }
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install (every platform's native parts)
+        working-directory: src
+        run: bun install --os="*" --cpu="*" --frozen-lockfile
+
+      - name: Build and pack the 12 archives (unsigned feed)
+        working-directory: src/packages/opencode
+        run: bun run script/release.ts
+
+      - name: Check the archives
+        working-directory: src/release/${{ inputs.version }}
+        run: |
+          ls -la
+          shasum -a 256 -c SHA256SUMS.txt
+          [ "$(ls *.tar.gz *.zip | wc -l | tr -d ' ')" = "12" ] || { echo "expected 12 archives"; exit 1; }
+          mkdir -p /tmp/try && tar -xzf "lens-$V-darwin-arm64.tar.gz" -C /tmp/try && /tmp/try/lens --version
+
+      - name: Draft release with the archives (no signature)
+        working-directory: src/release/${{ inputs.version }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f latest.json.sig
+          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "v$V" --repo "$GITHUB_REPOSITORY" --clobber ./*
+          else
+            gh release create "v$V" --repo "$GITHUB_REPOSITORY" --draft --title "Lens $V" --notes "Lens $V (draft: the feed signature is added before it is published)." ./*
+          fi
